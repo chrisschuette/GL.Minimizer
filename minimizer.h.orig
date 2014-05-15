@@ -1,0 +1,60 @@
+#ifndef MINIMIZER_H
+#define MINIMIZER_H
+
+#include "ispincuboid.h"
+#include "configurable.h"
+#include "named.h"
+#include <gsl/gsl_multimin.h>
+
+class Functional;
+class Minimizer: public Configurable, public Named
+{
+public:
+    Minimizer(ISpinCuboid& start, Functional& functional);
+    virtual ~Minimizer();
+
+    //Named
+    virtual std::string getName() const { return "Minimizer"; }
+
+    //Printable
+    //virtual std::string toString() const;
+
+    int iterate();
+    double getFunctionalValue() const;
+    const ISpinCuboid& getCurrentSpins() const;
+
+    int getIteration() const { return m_iteration; }
+    virtual void configure(const basic::Configuration& configuration);
+    void init();
+    static void Register();
+
+    //getters and setters
+    void setMaxIterations(int maxIter) { m_maxIterations = maxIter; }
+protected:
+
+    //optimization functions
+    static double m_f (const gsl_vector * x, void * params);
+    static void m_df (const gsl_vector * x, void * params, gsl_vector * g);
+    static void m_fdf (const gsl_vector * x, void * params, double * f, gsl_vector * g);
+
+    static bool m_registered;
+    ISpinCuboid& m_start;
+    Functional& m_functional;
+    ISpinCuboid* m_current;
+    gsl_vector* m_currentGSLVector;
+
+    // configuration parameterrs
+    const gsl_multimin_fdfminimizer_type *m_algorithm;
+    double m_LSParameter;
+    double m_LSAccuracy;
+    double m_threshold;
+    int m_maxIterations;
+
+    int m_iteration;
+
+    gsl_multimin_fdfminimizer *m_minimizer;
+    gsl_multimin_function_fdf m_func;
+
+};
+
+#endif // MINIMIZER_H

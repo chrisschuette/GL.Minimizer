@@ -1,0 +1,98 @@
+#-------------------------------------------------
+#
+# Project created by QtCreator 2012-11-13T17:33:10
+#
+#-------------------------------------------------
+
+QT       += core gui opengl
+LIBS +=  -L/opt/local/lib -L/usr/lib -lglut -lgsl -lconfig++ -llua -lluabindd -lcblas -lboost_unit_test_framework -lgtest -lboost_program_options-mt
+INCLUDEPATH += /opt/local/include
+
+TARGET = minimizer
+TEMPLATE = app
+
+
+SOURCES +=\
+        mainwindow.cpp \
+   main.cpp \
+    array.cpp \
+    array_test.cpp \
+    spincuboid.cpp \
+    spincuboid_test.cpp \
+    bspincuboid.cpp \
+    bspincuboid_test.cpp \
+    bspinzylinder.cpp \
+    bspinzylinder_test.cpp \
+    bspincomplex.cpp \
+    BSpinComplex_Test.cpp \
+    mathematicareader.cpp \
+    mathematicawriter.cpp \
+    bspinsphere.cpp \
+    luainterpreter.cpp \
+    configuration.cpp \
+    Exception.cpp \
+    utils.cpp \
+    outputsystem.cpp \
+    terminator.cpp \
+    message.cpp \
+    simplemessage.cpp \
+    printable.cpp \
+    testprintable.cpp \
+    output.cpp \
+    soutput.cpp \
+    named.cpp \
+    minimizer.cpp \
+    functional.cpp \
+    iarray.cpp \
+    ispincuboid.cpp \
+    configurable.cpp \
+    ginzburglandau.cpp \
+    phase.cpp \
+    helical.cpp \
+    vis/arrow.cpp \
+    vis/defect.cpp \
+    vis/glwidget.cpp \
+    qcustomplot.cpp \
+    viewer.cpp \
+    luathread.cpp
+
+HEADERS  += mainwindow.h \
+    iarray.h \
+    array.h \
+    spincuboid.h \
+    ispincuboid.h \
+    bspincuboid.h \
+    bspinzylinder.h \
+    bspincomplex.h \
+    iarraywriter.h \
+    iarrayreader.h \
+    mathematicareader.h \
+    mathematicawriter.h \
+    bspinsphere.h \
+    luainterpreter.h \
+    configuration.h \
+    Exception.h \
+    utils.h \
+    outputsystem.h \
+    terminator.h \
+    message.h \
+    simplemessage.h \
+    printable.h \
+    testprintable.h \
+    output.h \
+    soutput.h \
+    named.h \
+    minimizer.h \
+    functional.h \
+    configurable.h \
+    ginzburglandau.h \
+    phase.h \
+    helical.h \
+    vis/arrow.h \
+    vis/defect.h \
+    vis/glwidget.h \
+    qcustomplot.h \
+    viewer.h \
+    luathread.h
+
+FORMS    += mainwindow.ui

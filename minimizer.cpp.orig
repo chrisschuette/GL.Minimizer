@@ -1,0 +1,192 @@
+#include "minimizer.h"
+#include "luainterpreter.h"
+#include "functional.h"
+#include "outputsystem.h"
+#include "Exception.h"
+#include <sstream>
+
+bool Minimizer::m_registered = scripting::LuaInterpreter::getInstance().addRegisterFunction(Minimizer::Register);
+void Minimizer::Register() {
+    scripting::LuaInterpreter& luaInterpreter = scripting::LuaInterpreter::getInstance();
+
+    if(!luaInterpreter.isClassRegistered("ISpinCuboid"))
+        ISpinCuboid::Register();
+
+    if(!luaInterpreter.isClassRegistered("Functional"))
+        Functional::Register();
+
+    if(!luaInterpreter.isClassRegistered("Configurable"))
+        Configurable::Register();
+
+    if(!luaInterpreter.isClassRegistered("Minimizer"))
+        luabind::module(luaInterpreter.getL())
+        [
+                luabind::class_< Minimizer, luabind::bases< Configurable > >("Minimizer")
+                .def(luabind::constructor<ISpinCuboid&,Functional&>())
+                .def("init", &Minimizer::init)
+                .def("iterate", &Minimizer::iterate)
+                .def("getIteration", &Minimizer::getIteration)
+                .def("getFunctionalValue", &Minimizer::getFunctionalValue)
+                .def("getCurrentSpins", &Minimizer::getCurrentSpins)
+
+        ];
+}
+
+Minimizer::Minimizer(ISpinCuboid &start, Functional &functional)
+    : m_algorithm(gsl_multimin_fdfminimizer_conjugate_fr)
+    , m_minimizer(0)
+    , m_LSAccuracy(1e-4)
+    , m_LSParameter(0.01)
+    , m_iteration(0)
+    , m_maxIterations(100)
+    , m_threshold(1e-3)
+    , m_start(start), m_functional(functional)
+    , m_current(m_start.clone())
+    , m_currentGSLVector(m_current->getData())
+{
+
+}
+
+Minimizer::~Minimizer() {
+    if(m_minimizer)
+        gsl_multimin_fdfminimizer_free(m_minimizer);
+    if(m_current) {
+        m_current->setData(m_currentGSLVector);
+        delete m_current;
+    }
+}
+/*
+std::string Minimizer::toString() const {
+//    std::stringstream ss;
+//    ss << "==== CONFIGURATION FOR MINIMIZER ====" << std::endl;
+//    ss << " initial LS parameter = " << m_LSParameter << std::endl;
+//    ss << " LS accuracy = " << m_LSAccuracy << std::endl;
+//    ss << " max. iterations = " << m_maxIterations << std::endl;
+//    ss << " threshold = " << m_threshold << std::endl;
+//    ss << "!=== CONFIGURATION FOR MINIMIZER ====";
+    return std::string();
+}
+*/
+
+int Minimizer::iterate() {
+    printf ("s is a '%s' minimizer\n",
+            gsl_multimin_fdfminimizer_name (m_minimizer));
+    m_iteration++;
+    int status = gsl_multimin_fdfminimizer_iterate(m_minimizer);
+    if (status)
+        return status;
+    if (m_iteration > m_maxIterations)
+        return GSL_EMAXITER;
+    status = gsl_multimin_test_gradient (m_minimizer->gradient, m_threshold);
+    return status;
+}
+
+double Minimizer::getFunctionalValue() const {
+    if(m_minimizer)
+       return m_minimizer->f;
+    return 0;
+}
+
+const ISpinCuboid& Minimizer::getCurrentSpins() const {
+    m_current->setData(m_minimizer->x);
+    return *m_current;
+}
+
+void Minimizer::configure(const basic::Configuration& configuration) {
+
+    out << "==== CONFIGURATION FOR MINIMIZER ====" << eom;
+
+    try {
+    libconfig::Setting& algorithmSetting = configuration.lookup(MAKEPATH("algorithm"));
+    std::string algorithm = algorithmSetting;
+    out << " algorithm: " << algorithm << eom;
+    if(algorithm == "Fletcher-Reeves") {
+        m_algorithm = gsl_multimin_fdfminimizer_conjugate_fr;
+    } else if(algorithm == "BFGS") {
+        m_algorithm = gsl_multimin_fdfminimizer_vector_bfgs2;
+    }
+    } catch (...) {
+        out << " algorithm = Fletcher-Reeves" << eom;
+    }
+
+    try {
+        libconfig::Setting& lspSetting = configuration.lookup(MAKEPATH("initialLSP"));
+        m_LSParameter = lspSetting;
+    } catch (...) {
+        //ok
+    }
+    out << " initial LS parameter = " << m_LSParameter << eom;
+    try {
+        libconfig::Setting& lsaccuracySetting = configuration.lookup(MAKEPATH("LSAccuracy"));
+        m_LSAccuracy = lsaccuracySetting;
+    } catch (...) {
+        //ok
+    }
+    out << " LS accuracy = " << m_LSAccuracy << eom;
+
+    try {
+        libconfig::Setting& maxIterSetting = configuration.lookup(MAKEPATH("iterations"));
+        m_maxIterations = maxIterSetting;
+    } catch (...) {
+        //ok
+    }
+    out << " max. iterations = " << m_maxIterations << eom;
+    try {
+        libconfig::Setting& thresholdSetting = configuration.lookup(MAKEPATH("threshold"));
+        m_threshold = thresholdSetting;
+    } catch (...) {
+        //ok
+    }
+    out << " threshold = " << m_threshold << eom;
+    out << "!=== CONFIGURATION FOR MINIMIZER ====" << eom;
+}
+
+void Minimizer::init() {
+    int solverSize = m_start.getSize();
+
+    m_iteration = 0;
+    if(m_minimizer != 0) {
+        gsl_multimin_fdfminimizer_free (m_minimizer);
+        m_minimizer = 0;
+    }
+    if( (m_algorithm != 0) && (m_start.getSize() > 0) ) {
+        m_minimizer = gsl_multimin_fdfminimizer_alloc (gsl_multimin_fdfminimizer_conjugate_fr, solverSize);
+    }
+    else {
+        ERROR("algorithm not set or vector length = 0.")
+    }
+
+    printf ("s is a '%s' minimizer\n",
+            gsl_multimin_fdfminimizer_name (m_minimizer));
+
+    m_func.n = solverSize;
+    m_func.f = Minimizer::m_f;
+    m_func.df = Minimizer::m_df;
+    m_func.fdf = Minimizer::m_fdf;
+    m_func.params = this;
+
+    out << "Solver size: " << solverSize << eom;
+    for( int d = 0; d < m_start.getNoDimensions(); d++) {
+        out << "dimension " << d << ": " << m_start.getDimension(d) << eom;
+    }
+
+    gsl_multimin_fdfminimizer_set (m_minimizer, &m_func, m_start.getData(), m_LSParameter, m_LSAccuracy);
+    printf ("s is a '%s' minimizer\n",
+            gsl_multimin_fdfminimizer_name (m_minimizer));
+}
+
+double Minimizer::m_f (const gsl_vector * x, void * params) {
+    Minimizer* m = static_cast< Minimizer* >(params);
+    return m->m_functional.f(x, m->m_start);
+}
+
+void Minimizer::m_df (const gsl_vector * x, void * params, gsl_vector * g) {
+    Minimizer* m = static_cast< Minimizer* >(params);
+    m->m_functional.df(x, m->m_start, g);
+}
+
+void Minimizer::m_fdf (const gsl_vector * x, void * params, double * f, gsl_vector * g) {
+    Minimizer* m = static_cast< Minimizer* >(params);
+    *f = m->m_functional.fdf(x, m->m_start, g);
+}
+
