@@ -10,9 +10,6 @@ Required libraries
 The following libraries are needed to successfully compile the project
 * [libconfig](http://www.hyperrealm.com/libconfig/)
 * [GNU Scientific Library](http://www.gnu.org/software/gsl/)
-* [GNU MPFR Library](http://www.mpfr.org/)
-* [GNU Multiple Precision Arithmetic Library (GMP)](https://gmplib.org/)
-* [FFTW 3](http://www.fftw.org/)
 * [Boost.Program_options](http://www.boost.org/doc/libs/1_55_0/doc/html/program_options.html)
 * OpenGL
 * [Lua](http://www.lua.org/)
